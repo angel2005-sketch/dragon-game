@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Dragon War</title>
+
 <style>
 body {
   margin: 0;
@@ -23,19 +24,18 @@ body {
 .character {
   width: 200px;
   height: 200px;
-  background-size: cover;
+  border-radius: 20px;
 }
 
 #dragon {
   background: linear-gradient(45deg, #ff4e50, #fc913a);
-  border-radius: 20px;
-  box-shadow: 0 0 20px orange;
+  box-shadow: 0 0 25px orange;
 }
 
 #enemy {
   background: linear-gradient(45deg, #434343, #000000);
-  border-radius: 20px;
-  box-shadow: 0 0 20px red;
+  box-shadow: 0 0 25px red;
+  cursor: pointer;
 }
 
 .ui {
@@ -45,17 +45,35 @@ body {
 }
 
 button {
-  padding: 10px 20px;
-  font-size: 16px;
-  margin-top: 10px;
+  padding: 8px 15px;
+  font-size: 14px;
+  margin-top: 5px;
   cursor: pointer;
 }
 
-.hp-bar {
+.hp-container {
   width: 200px;
   height: 20px;
+  background: #550000;
+  margin-top: 5px;
+}
+
+.hp-bar {
+  height: 100%;
   background: red;
-  margin-top: 10px;
+  width: 100%;
+}
+
+.damage {
+  position: absolute;
+  color: yellow;
+  font-weight: bold;
+  animation: floatUp 0.8s ease-out forwards;
+}
+
+@keyframes floatUp {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-40px); }
 }
 </style>
 </head>
@@ -64,10 +82,16 @@ button {
 
 <div class="ui">
   <div>Coins: <span id="coins">0</span></div>
+  <div>Level: <span id="level">1</span></div>
+
   <div>Enemy HP:</div>
-  <div class="hp-bar" id="enemyHP"></div>
+  <div class="hp-container">
+    <div class="hp-bar" id="enemyHP"></div>
+  </div>
+
   <div>Hatch Timer: <span id="timer">120</span>s</div>
   <button onclick="speedUp()">Speed Up (-10s)</button>
+  <button onclick="watchAd()">Watch Ad (2x Coins 10s)</button>
 </div>
 
 <div id="game">
@@ -76,26 +100,67 @@ button {
 </div>
 
 <script>
-let coins = 0;
-let enemyHP = 100;
+let coins = localStorage.getItem("coins") ? parseInt(localStorage.getItem("coins")) : 0;
+let level = localStorage.getItem("level") ? parseInt(localStorage.getItem("level")) : 1;
+
+let baseHP = 100;
+let enemyHP = baseHP;
 let timer = 120;
+let doubleCoins = false;
 
 const hpBar = document.getElementById("enemyHP");
 const coinText = document.getElementById("coins");
+const levelText = document.getElementById("level");
 const timerText = document.getElementById("timer");
 
+coinText.innerText = coins;
+levelText.innerText = level;
+
 function updateHP() {
-  hpBar.style.width = enemyHP * 2 + "px";
+  hpBar.style.width = (enemyHP / baseHP) * 100 + "%";
 }
 
-document.getElementById("enemy").onclick = function() {
-  enemyHP -= 10;
-  if (enemyHP <= 0) {
-    coins += 10;
-    enemyHP = 100;
-  }
+function spawnEnemy() {
+  baseHP = 100 + (level - 1) * 25;
+  enemyHP = baseHP;
   updateHP();
-  coinText.innerText = coins;
+}
+
+document.getElementById("enemy").onclick = function(e) {
+  let damage = 10 + level * 2;
+  enemyHP -= damage;
+
+  // Flash
+  const enemy = document.getElementById("enemy");
+  enemy.style.opacity = "0.5";
+  setTimeout(() => enemy.style.opacity = "1", 100);
+
+  // Damage number
+  const dmg = document.createElement("div");
+  dmg.className = "damage";
+  dmg.innerText = "-" + damage;
+  dmg.style.left = e.pageX + "px";
+  dmg.style.top = e.pageY + "px";
+  document.body.appendChild(dmg);
+  setTimeout(() => dmg.remove(), 800);
+
+  if (enemyHP <= 0) {
+    let reward = 10 * level;
+    if (doubleCoins) reward *= 2;
+
+    coins += reward;
+    level++;
+
+    localStorage.setItem("coins", coins);
+    localStorage.setItem("level", level);
+
+    coinText.innerText = coins;
+    levelText.innerText = level;
+
+    spawnEnemy();
+  }
+
+  updateHP();
 }
 
 function speedUp() {
@@ -106,6 +171,12 @@ function speedUp() {
   }
 }
 
+function watchAd() {
+  doubleCoins = true;
+  alert("2x Coins Activated for 10 seconds!");
+  setTimeout(() => doubleCoins = false, 10000);
+}
+
 setInterval(function() {
   if (timer > 0) {
     timer--;
@@ -113,7 +184,7 @@ setInterval(function() {
   }
 }, 1000);
 
-updateHP();
+spawnEnemy();
 </script>
 
 </body>
